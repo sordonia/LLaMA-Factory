@@ -457,7 +457,7 @@ class FinetuningArguments(
         default=False,
         metadata={"help": "Whether or not to train model in purely bf16 precision (without AMP)."},
     )
-    stage: Literal["pt", "sft", "rm", "ppo", "dpo", "kto"] = field(
+    stage: Literal["pt", "sft", "sft-ent", "rm", "ppo", "dpo", "kto"] = field(
         default="sft",
         metadata={"help": "Which stage will be performed in training."},
     )
@@ -509,6 +509,11 @@ class FinetuningArguments(
         default=False,
         metadata={"help": "Whether or not to save the training loss curves."},
     )
+    sft_ent_negative_weight: float = field(
+        default=0.2,
+        metadata={"help": "Weight multiplier for negative-reward samples during sft-ent training."},
+    )
+
     include_effective_tokens_per_second: bool = field(
         default=False,
         metadata={"help": "Whether or not to compute effective tokens per second."},

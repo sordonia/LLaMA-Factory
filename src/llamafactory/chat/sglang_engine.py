@@ -71,7 +71,7 @@ class SGLangEngine(BaseEngine):
             if quant_method == QuantizationMethod.GPTQ and model_args.infer_dtype == "auto":
                 model_args.infer_dtype = "float16"
 
-        self.can_generate = finetuning_args.stage == "sft"
+        self.can_generate = finetuning_args.stage in ["sft", "sft-ent"]
         tokenizer_module = load_tokenizer(model_args)
         self.tokenizer = tokenizer_module["tokenizer"]
         self.processor = tokenizer_module["processor"]

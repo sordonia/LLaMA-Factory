@@ -226,6 +226,30 @@ class SharegptDatasetConverter(DatasetConverter):
         }
         return output
 
+@dataclass
+class SftEntDatasetConverter(SharegptDatasetConverter):
+    def __call__(self, example: dict[str, Any]) -> dict[str, Any]:
+        output = super().__call__(example)
+        reward_value = None
+        reward_key = self.dataset_attr.reward
+        if reward_key and reward_key in example:
+            reward_value = example[reward_key]
+            if isinstance(reward_value, (list, tuple)) and len(reward_value):
+                reward_value = reward_value[0]
+        if reward_value is None:
+            reward_value = 1
+        else:
+            if isinstance(reward_value, bool):
+                reward_value = int(reward_value)
+            else:
+                try:
+                    reward_value = int(float(reward_value))
+                except (TypeError, ValueError):
+                    logger.warning_rank0_once(f"Invalid reward value {reward_value!r}, defaulting to 1.")
+                    reward_value = 1
+        output["_reward"] = reward_value
+        return output
+
 
 @dataclass
 class OpenAIDatasetConverter(DatasetConverter):
@@ -371,6 +395,7 @@ DATASET_CONVERTERS = {
     "alpaca": AlpacaDatasetConverter,
     "sharegpt": SharegptDatasetConverter,
     "openai": OpenAIDatasetConverter,
+    "sft-ent": SftEntDatasetConverter,
 }
 
 
@@ -395,6 +420,7 @@ def align_dataset(
     dataset_attr: "DatasetAttr",
     data_args: "DataArguments",
     training_args: "Seq2SeqTrainingArguments",
+    stage: Optional[str] = None,
 ) -> Union["Dataset", "IterableDataset"]:
     r"""Align the dataset to a specific format.
 
@@ -416,7 +442,11 @@ def align_dataset(
             desc="Converting format of dataset",
         )
 
-    dataset_converter = get_dataset_converter(dataset_attr.formatting, dataset_attr, data_args)
+    converter_name = dataset_attr.formatting
+    if stage == "sft-ent" and converter_name == "sharegpt":
+        dataset_converter = SftEntDatasetConverter(dataset_attr, data_args)
+    else:
+        dataset_converter = get_dataset_converter(converter_name, dataset_attr, data_args)
     return dataset.map(
         dataset_converter,
         batched=False,

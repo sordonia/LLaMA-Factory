@@ -89,6 +89,7 @@ class SupervisedDatasetProcessor(DatasetProcessor):
         # build inputs with format `<bos> X Y <eos>` and labels with format `<ignore> ... <ignore> Y <eos>`
         # for multiturn examples, we only mask the prompt part in each prompt-response pair.
         model_inputs = defaultdict(list)
+
         for i in range(len(examples["_prompt"])):
             if len(examples["_prompt"][i]) % 2 != 1 or len(examples["_response"][i]) != 1:
                 logger.warning_rank0(
@@ -111,6 +112,11 @@ class SupervisedDatasetProcessor(DatasetProcessor):
             model_inputs["images"].append(examples["_images"][i])
             model_inputs["videos"].append(examples["_videos"][i])
             model_inputs["audios"].append(examples["_audios"][i])
+            if "_reward" in examples:
+                reward_value = examples["_reward"][i]
+                if reward_value is None:
+                    reward_value = 1
+                model_inputs["rewards"].append(int(reward_value))
 
         return model_inputs
 
@@ -125,6 +131,9 @@ class SupervisedDatasetProcessor(DatasetProcessor):
 @dataclass
 class PackedSupervisedDatasetProcessor(SupervisedDatasetProcessor):
     def preprocess_dataset(self, examples: dict[str, list[Any]]) -> dict[str, list[Any]]:
+        if "_reward" in examples:
+            raise ValueError("Packed SFT processing does not support reward-annotated samples.")
+
         # TODO: use `position_ids` to achieve packing
         # build inputs with format `<bos> X1 Y1 <eos> <bos> X2 Y2 <eos>`
         # and labels with format `<ignore> ... <ignore> Y1 <eos> <ignore> ... <ignore> Y2 <eos>`

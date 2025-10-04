@@ -101,11 +101,11 @@ def check_dependencies() -> None:
     check_version("trl>=0.8.6,<=0.9.6")
 
 
-def calculate_tps(dataset: list[dict[str, Any]], metrics: dict[str, float], stage: Literal["sft", "rm"]) -> float:
+def calculate_tps(dataset: list[dict[str, Any]], metrics: dict[str, float], stage: Literal["sft", "sft-ent", "rm"]) -> float:
     r"""Calculate effective tokens per second."""
     effective_token_num = 0
     for data in dataset:
-        if stage == "sft":
+        if stage in ["sft", "sft-ent"]:
             effective_token_num += len(data["input_ids"])
         elif stage == "rm":
             effective_token_num += len(data["chosen_input_ids"]) + len(data["rejected_input_ids"])

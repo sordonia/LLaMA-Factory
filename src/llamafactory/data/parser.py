@@ -30,7 +30,7 @@ class DatasetAttr:
     # basic configs
     load_from: Literal["hf_hub", "ms_hub", "om_hub", "script", "file"]
     dataset_name: str
-    formatting: Literal["alpaca", "sharegpt"] = "alpaca"
+    formatting: Literal["alpaca", "sharegpt", "sft-ent"] = "alpaca"
     ranking: bool = False
     # extra configs
     subset: Optional[str] = None
@@ -54,6 +54,7 @@ class DatasetAttr:
     history: Optional[str] = None
     # sharegpt columns
     messages: Optional[str] = "conversations"
+    reward: Optional[str] = "reward"
     # sharegpt tags
     role_tag: Optional[str] = "from"
     content_tag: Optional[str] = "value"
@@ -78,7 +79,7 @@ class DatasetAttr:
         self.set_attr("num_samples", attr)
 
         if "columns" in attr:
-            column_names = ["prompt", "query", "response", "history", "messages", "system", "tools"]
+            column_names = ["prompt", "query", "response", "history", "messages", "system", "tools", "reward"]
             column_names += ["images", "videos", "audios", "chosen", "rejected", "kto_tag"]
             for column_name in column_names:
                 self.set_attr(column_name, attr["columns"])

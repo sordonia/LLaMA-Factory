@@ -53,6 +53,7 @@ def _load_single_dataset(
     model_args: "ModelArguments",
     data_args: "DataArguments",
     training_args: "Seq2SeqTrainingArguments",
+    stage: str,
 ) -> Union["Dataset", "IterableDataset"]:
     r"""Load a single dataset and aligns it to the standard format."""
     logger.info_rank0(f"Loading dataset {dataset_attr}...")
@@ -159,7 +160,7 @@ def _load_single_dataset(
         max_samples = min(data_args.max_samples, len(dataset))
         dataset = dataset.select(range(max_samples))
 
-    return align_dataset(dataset, dataset_attr, data_args, training_args)
+    return align_dataset(dataset, dataset_attr, data_args, training_args, stage=stage)
 
 
 def _get_merged_dataset(
@@ -167,7 +168,7 @@ def _get_merged_dataset(
     model_args: "ModelArguments",
     data_args: "DataArguments",
     training_args: "Seq2SeqTrainingArguments",
-    stage: Literal["pt", "sft", "rm", "ppo", "kto"],
+    stage: Literal["pt", "sft", "sft-ent", "rm", "ppo", "kto"],
     return_dict: bool = False,
 ) -> Optional[Union["Dataset", "IterableDataset", dict[str, "Dataset"]]]:
     r"""Return the merged datasets in the standard format."""
@@ -179,7 +180,9 @@ def _get_merged_dataset(
         if (stage == "rm" and dataset_attr.ranking is False) or (stage != "rm" and dataset_attr.ranking is True):
             raise ValueError("The dataset is not applicable in the current training stage.")
 
-        datasets[dataset_name] = _load_single_dataset(dataset_attr, model_args, data_args, training_args)
+        datasets[dataset_name] = _load_single_dataset(
+            dataset_attr, model_args, data_args, training_args, stage=stage
+        )
 
     if return_dict:
         return datasets
@@ -189,7 +192,7 @@ def _get_merged_dataset(
 
 def _get_dataset_processor(
     data_args: "DataArguments",
-    stage: Literal["pt", "sft", "rm", "ppo", "kto"],
+    stage: Literal["pt", "sft", "sft-ent", "rm", "ppo", "kto"],
     template: "Template",
     tokenizer: "PreTrainedTokenizer",
     processor: Optional["ProcessorMixin"],
@@ -198,7 +201,7 @@ def _get_dataset_processor(
     r"""Return the corresponding dataset processor."""
     if stage == "pt":
         dataset_processor_class = PretrainDatasetProcessor
-    elif stage == "sft" and not do_generate:
+    elif stage in ["sft", "sft-ent"] and not do_generate:
         if data_args.packing:
             if data_args.neat_packing:  # hack datasets to have int32 attention mask
                 from datasets.arrow_writer import OptimizedTypedSequence, TypedSequence
@@ -231,7 +234,7 @@ def _get_preprocessed_dataset(
     dataset: Optional[Union["Dataset", "IterableDataset"]],
     data_args: "DataArguments",
     training_args: "Seq2SeqTrainingArguments",
-    stage: Literal["pt", "sft", "rm", "ppo", "kto"],
+    stage: Literal["pt", "sft", "sft-ent", "rm", "ppo", "kto"],
     template: "Template",
     tokenizer: "PreTrainedTokenizer",
     processor: Optional["ProcessorMixin"] = None,
@@ -279,7 +282,7 @@ def get_dataset(
     model_args: "ModelArguments",
     data_args: "DataArguments",
     training_args: "Seq2SeqTrainingArguments",
-    stage: Literal["pt", "sft", "rm", "ppo", "kto"],
+    stage: Literal["pt", "sft", "sft-ent", "rm", "ppo", "kto"],
     tokenizer: "PreTrainedTokenizer",
     processor: Optional["ProcessorMixin"] = None,
 ) -> "DatasetModule":

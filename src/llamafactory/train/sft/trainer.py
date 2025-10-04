@@ -30,7 +30,7 @@ from ...extras.constants import IGNORE_INDEX
 from ...extras.packages import is_transformers_version_greater_than
 from ..callbacks import SaveProcessorCallback
 from ..fp8_utils import configure_fp8_environment, verify_fp8_status
-from ..trainer_utils import create_custom_optimizer, create_custom_scheduler
+from ..trainer_utils import create_custom_optimizer, create_custom_scheduler, get_batch_logps
 
 
 if TYPE_CHECKING:
@@ -113,8 +113,56 @@ class CustomSeq2SeqTrainer(Seq2SeqTrainer):
         return super()._get_train_sampler(*args, **kwargs)
 
     @override
-    def compute_loss(self, model, inputs, *args, **kwargs):
-        return super().compute_loss(model, inputs, *args, **kwargs)
+    def compute_loss(self, model, inputs, return_outputs: bool = False, **kwargs):
+        if self.finetuning_args.stage != "sft-ent" or "rewards" not in inputs:
+            return super().compute_loss(model, inputs, return_outputs=return_outputs, **kwargs)
+
+        rewards = inputs.pop("rewards")
+        labels = inputs.get("labels")
+        outputs = model(**inputs, return_dict=True)
+        logits = outputs.get("logits")
+
+        if logits is None or labels is None:
+            if isinstance(outputs, dict):
+                loss = outputs.get("loss")
+            else:
+                loss = getattr(outputs, "loss", None)
+            if loss is None:
+                loss = torch.zeros((), device=self.args.device, dtype=torch.float32)
+            inputs["rewards"] = rewards
+            if return_outputs:
+                return loss, outputs
+            return loss
+
+        logits = logits.float()
+        labels = labels.to(logits.device)
+        rewards = rewards.to(logits.device).view(-1)
+        logps, token_counts = get_batch_logps(logits, labels, label_pad_token_id=IGNORE_INDEX)
+        nll = -logps
+        token_counts = token_counts.to(logits.device)
+
+        positive_weight = torch.ones_like(rewards, dtype=logits.dtype)
+        negative_weight = torch.full_like(rewards, self.finetuning_args.sft_ent_negative_weight, dtype=logits.dtype)
+        weights = torch.where(rewards >= 0.5, positive_weight, negative_weight)
+
+        weighted_tokens = token_counts * weights
+        total_weight = weighted_tokens.sum()
+        total_loss_sum = (nll.to(logits.dtype) * weights).sum()
+
+        if total_weight > 0:
+            loss = total_loss_sum / total_weight
+        else:
+            if isinstance(outputs, dict):
+                loss = outputs.get("loss")
+            else:
+                loss = getattr(outputs, "loss", None)
+            if loss is None:
+                loss = total_loss_sum
+
+        inputs["rewards"] = rewards
+        if return_outputs:
+            return loss, outputs
+        return loss
 
     @override
     def prediction_step(

@@ -223,7 +223,7 @@ def get_train_args(args: Optional[Union[dict[str, Any], list[str]]] = None) -> _
         _set_transformers_logging()
 
     # Check arguments
-    if finetuning_args.stage != "sft":
+    if finetuning_args.stage not in ["sft", "sft-ent"]:
         if training_args.predict_with_generate:
             raise ValueError("`predict_with_generate` cannot be set as True except SFT.")
 
@@ -233,7 +233,10 @@ def get_train_args(args: Optional[Union[dict[str, Any], list[str]]] = None) -> _
         if data_args.train_on_prompt or data_args.mask_history:
             raise ValueError("`train_on_prompt` or `mask_history` cannot be set as True except SFT.")
 
-    if finetuning_args.stage == "sft" and training_args.do_predict and not training_args.predict_with_generate:
+    if finetuning_args.stage == "sft-ent" and data_args.packing:
+        raise ValueError("`packing` cannot be enabled for sft-ent stage.")
+
+    if finetuning_args.stage in ["sft", "sft-ent"] and training_args.do_predict and not training_args.predict_with_generate:
         raise ValueError("Please enable `predict_with_generate` to save model predictions.")
 
     if finetuning_args.stage in ["rm", "ppo"] and training_args.load_best_model_at_end:
@@ -439,7 +442,7 @@ def get_infer_args(args: Optional[Union[dict[str, Any], list[str]]] = None) -> _
 
     # Check arguments
     if model_args.infer_backend == "vllm":
-        if finetuning_args.stage != "sft":
+        if finetuning_args.stage not in ["sft", "sft-ent"]:
             raise ValueError("vLLM engine only supports auto-regressive models.")
 
         if model_args.quantization_bit is not None:

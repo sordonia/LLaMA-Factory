@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .feedback import FeedbackDatasetProcessor
-from .pairwise import PairwiseDatasetProcessor
+from .pairwise import PairwiseDatasetProcessor, SequencePairwiseDatasetProcessor
 from .pretrain import PretrainDatasetProcessor
 from .processor_utils import DatasetProcessor
 from .supervised import PackedSupervisedDatasetProcessor, SupervisedDatasetProcessor
@@ -28,4 +28,5 @@ __all__ = [
     "PretrainDatasetProcessor",
     "SupervisedDatasetProcessor",
     "UnsupervisedDatasetProcessor",
+    "SequencePairwiseDatasetProcessor",
 ]

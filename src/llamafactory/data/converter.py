@@ -177,7 +177,7 @@ class SequenceDPODatasetConverter(DatasetConverter):
             response.append(aligned_messages)
 
         output = {
-            "_prompt": [],
+            "_prompt": ["[EMPTY]"],
             "_response": response,
             "_system": system,
             "_tools": example[self.dataset_attr.tools] if self.dataset_attr.tools else "",
@@ -454,6 +454,7 @@ DATASET_CONVERTERS = {
     "sharegpt": SharegptDatasetConverter,
     "openai": OpenAIDatasetConverter,
     "sft-ent": SftEntDatasetConverter,
+    "seq-dpo": SequenceDPODatasetConverter,
 }
 
 

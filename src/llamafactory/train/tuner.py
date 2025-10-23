@@ -74,7 +74,7 @@ def _training_function(config: dict[str, Any]) -> None:
         run_rm(model_args, data_args, training_args, finetuning_args, callbacks)
     elif finetuning_args.stage == "ppo":
         run_ppo(model_args, data_args, training_args, finetuning_args, generating_args, callbacks)
-    elif finetuning_args.stage == "dpo":
+    elif finetuning_args.stage in ["dpo", "seq-dpo"]:
         run_dpo(model_args, data_args, training_args, finetuning_args, callbacks)
     elif finetuning_args.stage == "kto":
         run_kto(model_args, data_args, training_args, finetuning_args, callbacks)
